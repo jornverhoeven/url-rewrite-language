@@ -1,5 +1,7 @@
+import { regularParse } from "@jornverhoeven/parser";
 import { Expression, Variable } from "./Expressions";
 import { RewriteEvaluator } from "./RewriteEvaluator";
+import { parseUrlRewrite } from "./RewriteLanguageParser";
 
 export abstract class PathSegment {
     prefix: undefined | string = "/";
@@ -168,6 +170,10 @@ export class URLRewrite {
     evaluate(url: URL, evaluator?: RewriteEvaluatorFactory): Promise<URL>;
     evaluate(url: string | URL, evaluator: RewriteEvaluatorFactory = (u) => new RewriteEvaluator(u)): Promise<URL> {
         return evaluator(this).evaluate(url as URL);
+    }
+
+    static fromString(input: string): URLRewrite {
+        return regularParse(parseUrlRewrite(), input);
     }
 }
 

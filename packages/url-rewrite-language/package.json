@@ -14,7 +14,7 @@
         "lint:fix": "eslint . --ext .ts --fix"
     },
     "dependencies": {
-        "@url/parser": "^0.0.1"
+        "@jornverhoeven/parser": "^0.0.1"
     },
     "devDependencies": {
         "@jest/globals": "^29.7.0",

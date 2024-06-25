@@ -1,4 +1,4 @@
-import { ParseError, Parser, char, map, parseWithLeftovers, separatedBy, sequence, spaces } from "@url/parser";
+import { ParseError, Parser } from "@jornverhoeven/parser";
 import { assignment, expression, fullExpression, fullPath, functionCall, parseUrlRewrite, path, pathSegment, queryParam, variable } from "../src/RewriteLanguageParser";
 import { ComplexSegment, Path, Pattern, Quantifier, Query, StringSegment, URLRewrite, VariableSegment } from "../src/URLRewrite";
 import { Assignment, Variable, Number, FunctionCall, Boolean, String } from "../src/Expressions";

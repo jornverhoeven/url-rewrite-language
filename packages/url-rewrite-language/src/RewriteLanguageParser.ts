@@ -1,7 +1,7 @@
 import { ComplexSegment, Path, Modifier, PathSegment, Pattern, Quantifier, Query, StringSegment, VariableSegment, URLRewrite } from "./URLRewrite";
 import { Variable } from "./Expressions";
-import { map, choice, sequence, optional, between, chain, number, skip, separatedBy, stringLiteral, string, printErrorMessage, regularParse } from "@url/parser";
-import { ParseError, Parser, char, many, many1, satisfy, spaces } from "@url/parser";
+import { map, choice, sequence, optional, between, chain, number, skip, separatedBy, stringLiteral, string } from "@jornverhoeven/parser";
+import { ParseError, Parser, char, many, many1, satisfy, spaces } from "@jornverhoeven/parser";
 import * as Exs from "./Expressions";
 
 export function variable(): Parser<string> {
