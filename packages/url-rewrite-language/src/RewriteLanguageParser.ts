@@ -88,10 +88,17 @@ export function assignment(): Parser<Exs.Assignment> {
 }
 
 export function functionCall(): Parser<Exs.FunctionCall> {
-    return map(sequence(variable(), char("("), separatedBy(expression(), char(",")), char(")")), r => {
+    return map(sequence(variable(), char("("), args(), char(")")), r => {
         const [name, _, args, __] = r;
         return new Exs.FunctionCall(name as string, args as Exs.Expression[]);
     });
+
+    function args() {
+        return separatedBy(expression(), separator());
+    }
+    function separator() {
+        return map(sequence(spaces(), char(","), spaces()), ([_, r]) => r);
+    }
 }
 
 export function boolean(): Parser<Exs.Boolean> {
@@ -131,10 +138,10 @@ export function fullExpression(): Parser<any> {
 }
 
 export function parseUrlRewrite(): Parser<URLRewrite> {
-    return map(sequence(fullPath(), skip(spaces()), char("|"), skip(spaces()), expressions(), skip(spaces()), char("|"), skip(spaces()), fullPath()), r => {
+    return map(sequence(fullPath(), skip(spaces()), char("|"), optionalExpression(), skip(spaces()), fullPath()), r => {
         const path = r[0] as Path;
-        const expressions = r[4] as Exs.Expression[];
-        const destination = r[8] as Path;
+        const expressions = r[3] ? r[3] : [];
+        const destination = r[5] as Path;
         return new URLRewrite(path, destination, expressions as Exs.Expression[]);
     });
 
@@ -142,5 +149,8 @@ export function parseUrlRewrite(): Parser<URLRewrite> {
         return map(separatedBy(sequence(skip(spaces()), fullExpression(), skip(spaces())), char(",")), r => {
             return r.map(r => r[1]);
         });
+    }
+    function optionalExpression() {
+        return optional(map(sequence(skip(spaces()), expressions(), skip(spaces()), char("|")), r => r[1]));
     }
 }

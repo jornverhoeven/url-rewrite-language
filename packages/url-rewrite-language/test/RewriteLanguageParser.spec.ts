@@ -1,7 +1,7 @@
-import { ParseError, Parser } from "@url/parser";
-import { assignment, fullPath, path, pathSegment, queryParam, variable } from "../src/RewriteLanguageParser";
-import { ComplexSegment, Path, Pattern, Quantifier, Query, StringSegment, VariableSegment } from "../src/URLRewrite";
-import { Assignment, Variable, Number, FunctionCall} from "../src/Expressions";
+import { ParseError, Parser, char, map, parseWithLeftovers, separatedBy, sequence, spaces } from "@url/parser";
+import { assignment, expression, fullExpression, fullPath, functionCall, parseUrlRewrite, path, pathSegment, queryParam, variable } from "../src/RewriteLanguageParser";
+import { ComplexSegment, Path, Pattern, Quantifier, Query, StringSegment, URLRewrite, VariableSegment } from "../src/URLRewrite";
+import { Assignment, Variable, Number, FunctionCall, Boolean, String } from "../src/Expressions";
 
 describe("RewriteLanguageParser", () => {
     describe("variable", () => {
@@ -166,10 +166,10 @@ describe("RewriteLanguageParser", () => {
         it("should parse a simple assignment", () => {
             expectParser(assignment(), ":test <- 123", new Assignment(new Variable("test"), new Number(123)));
         });
-        it.only("should parse a complex assignment", () => {
+        it("should parse a complex assignment", () => {
             expectParser(assignment(), ":test <- concat(123, 456)", new Assignment(
-                new Variable("test"), 
-                new FunctionCall("function", [new Number(123), new Number(456)])
+                new Variable("test"),
+                new FunctionCall("concat", [new Number(123), new Number(456)])
             ));
         });
         it("should fail to parse an invalid assignment", () => {
@@ -179,12 +179,155 @@ describe("RewriteLanguageParser", () => {
             expect((r as ParseError).message).toEqual("Unexpected character 'n', expected ':' at position 0");
         });
     });
+
+    describe("functionCall", () => {
+        it("should parse a simple function call", () => {
+            expectParser(functionCall(), "concat(123, 456)",
+                new FunctionCall("concat", [new Number(123), new Number(456)])
+            );
+        });
+        it("should parse a function call with a variable", () => {
+            expectParser(functionCall(), "concat(123, :var)",
+                new FunctionCall("concat", [new Number(123), new Variable("var")])
+            );
+        });
+        it("should parse a function call with another function call", () => {
+            expectParser(functionCall(), "concat(123, concat(456, 789))",
+                new FunctionCall("concat", [
+                    new Number(123),
+                    new FunctionCall("concat", [new Number(456), new Number(789)])
+                ])
+            );
+        });
+        it("should throw an error for an invalid function call", () => {
+            const [c, r] = functionCall()("concat(123, 456", 0);
+            expect(c).toEqual(0);
+            expect(r).toBeInstanceOf(ParseError);
+            expect((r as ParseError).message).toEqual("Unexpected end of input");
+        });
+    });
+
+    describe("boolean", () => {
+        it("should parse a boolean true", () => {
+            expectParser(expression(), "true", new Boolean(true));
+        });
+        it("should parse a boolean false", () => {
+            expectParser(expression(), "false", new Boolean(false));
+        });
+        it("should fail to parse an invalid boolean", () => {
+            const [c, r] = expression()("haha", 0);
+            expect(c).toEqual(0);
+            expect(r).toBeInstanceOf(ParseError);
+            expect((r as ParseError).message).toEqual("No choice matched");
+        });
+    });
+
+    describe("expression", () => {
+        it("should parse a string literal", () => {
+            expectParser(expression(), '"test"', new String("test"));
+        });
+        it("should parse a number", () => {
+            expectParser(expression(), "123", new Number(123));
+        });
+        it("should parse a boolean", () => {
+            expectParser(expression(), "true", new Boolean(true));
+        });
+        it("should parse a variable", () => {
+            expectParser(expression(), ":variable", new Variable("variable"));
+        });
+        it("should parse a function call", () => {
+            expectParser(expression(), "concat(123, 456)", new FunctionCall("concat", [new Number(123), new Number(456)]));
+        });
+        it("should fail to parse an invalid expression", () => {
+            const [c, r] = expression()("nope", 0);
+            expect(c).toEqual(0);
+            expect(r).toBeInstanceOf(ParseError);
+            expect((r as ParseError).message).toEqual("No choice matched");
+        });
+    });
+
+    describe("fullExpression", () => {
+        it("should parse an assignment", () => {
+            expectParser(fullExpression(), ":test <- concat(123, 456)", new Assignment(
+                new Variable("test"),
+                new FunctionCall("concat", [new Number(123), new Number(456)])
+            ));
+        });
+        it("should parse an expression", () => {
+            expectParser(fullExpression(), "concat(123, 456)",
+                new FunctionCall("concat", [new Number(123), new Number(456)])
+            );
+        });
+
+        it("should fail to parse an invalid expression", () => {
+            const [c, r] = fullExpression()("nope", 0);
+            expect(c).toEqual(0);
+            expect(r).toBeInstanceOf(ParseError);
+            expect((r as ParseError).message).toEqual("No choice matched");
+        });
+    });
+
+    describe("parseUrlRewrite", () => {
+        it("should parse a simple redirect", () => {
+            const input = "/test/:variable/test ??query=value | /test/:variable/test";
+            const expected = new URLRewrite(
+                new Path([
+                    new StringSegment("test"),
+                    new VariableSegment(new Variable("variable")),
+                    new StringSegment("test"),
+                ], [new Query("query", "value")]),
+                new Path([
+                    new StringSegment("test"),
+                    new VariableSegment(new Variable("variable")),
+                    new StringSegment("test"),
+                ], []),
+                []
+            )
+            expectParser(parseUrlRewrite(), input, expected);
+        });
+        it("should parse a redirect with a single expression", () => {
+            const input = "/test/:variable/test | concat(123, 456) | /test/:variable/test";
+            const expected = new URLRewrite(
+                new Path([
+                    new StringSegment("test"),
+                    new VariableSegment(new Variable("variable")),
+                    new StringSegment("test"),
+                ], []),
+                new Path([
+                    new StringSegment("test"),
+                    new VariableSegment(new Variable("variable")),
+                    new StringSegment("test"),
+                ], []),
+                [new FunctionCall("concat", [new Number(123), new Number(456)])],
+            )
+            expectParser(parseUrlRewrite(), input, expected);
+        }); 
+        it("should parse a redirect with a multiple expressions", () => {
+            const input = "/test/:variable/test | concat(123, 456), concat(789, 101112) | /test/:variable/test";
+            const expected = new URLRewrite(
+                new Path([
+                    new StringSegment("test"),
+                    new VariableSegment(new Variable("variable")),
+                    new StringSegment("test"),
+                ], []),
+                new Path([
+                    new StringSegment("test"),
+                    new VariableSegment(new Variable("variable")),
+                    new StringSegment("test"),
+                ], []),
+                [
+                    new FunctionCall("concat", [new Number(123), new Number(456)]),
+                    new FunctionCall("concat", [new Number(789), new Number(101112)]),
+                ],
+            )
+            expectParser(parseUrlRewrite(), input, expected);
+        });
+    });
 });
 
 
 function expectParser<T>(parser: Parser<T>, input: string, expected: T) {
     const [c, r] = parser(input, 0);
-    console.log(c, r);
     expect(c).toEqual(input.length);
     expect(r).toEqual(expected);
 }
