@@ -50,7 +50,7 @@ import { URLRewrite, RewriteEvaluator, Expressions } from 'url-rewrite-language'
 
 const rule = URLRewrite.parse("/old/:path+ | :var <- uppercase(\"hello\") | /new/:path+/:var");
 const evaluator = new RewriteEvaluator(rule, {
-    uppercase: (str: Expressions.String) => str.toUpperCase()
+    uppercase: (str: Expressions.String) => str.toString().toUpperCase()
 });
 
 const result = evaluator.evaluate("https://example.com/old/hello/world");
