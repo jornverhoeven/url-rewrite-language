@@ -1,9 +1,10 @@
 {
     "name": "@jornverhoeven/parser",
     "version": "0.0.1",
-    "--types": "./dist/index.d.ts",
-    "types": "./src/index.ts",
-    "main": "./dist/index.js",
+    "types": "./dist/esm/index.d.ts",
+    "module": "./dist/esm/bundle.js",
+    "browser": "./dist/browser/bundle.js",
+
     "scripts": {
         "build": "tsc",
         "clean": "rimraf ./dist",

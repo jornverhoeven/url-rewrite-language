@@ -2,8 +2,13 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "rootDir": "./src",
-        "outDir": "./dist"
+        "outDir": "./dist/esm",
     },
-    "include": ["src/**/*", "../jest.setup.ts"],
-    "exclude": ["test/**/*"]
+    "include": [
+        "src/**/*",
+        "../jest.setup.ts"
+    ],
+    "exclude": [
+        "test/**/*"
+    ]
 }
