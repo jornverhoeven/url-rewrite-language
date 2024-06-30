@@ -40,6 +40,7 @@ export class RewriteEvaluator {
             return await fn(...args as Primitive<any>[]);
         } else if (expression instanceof Variable) {
             const value = context.variables[expression.name];
+            console.log(context.variables)
             if (value === undefined) throw new EvaluationError(`Variable ${expression.name} not found`);
             if (value instanceof Primitive) return value;
             if (value instanceof Variable) return this.evaluateExpression(value, context);

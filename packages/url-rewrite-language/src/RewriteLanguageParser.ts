@@ -138,19 +138,30 @@ export function fullExpression(): Parser<any> {
 }
 
 export function parseUrlRewrite(): Parser<URLRewrite> {
-    return map(sequence(fullPath(), skip(spaces()), char("|"), optionalExpression(), skip(spaces()), fullPath()), r => {
+    return map(sequence(fullPath(), expressions(), spaces(), char("|"), spaces(), fullPath()), r => {
         const path = r[0] as Path;
-        const expressions = r[3] ? r[3] : [];
+        const expressions = r[1] ? r[1] : [];
         const destination = r[5] as Path;
         return new URLRewrite(path, destination, expressions as Exs.Expression[]);
     });
 
-    function expressions() {
-        return map(separatedBy(sequence(skip(spaces()), fullExpression(), skip(spaces())), char(",")), r => {
-            return r.map(r => r[1]);
-        });
-    }
-    function optionalExpression() {
-        return optional(map(sequence(skip(spaces()), expressions(), skip(spaces()), char("|")), r => r[1]));
+    function expressions(): Parser<Exs.Expression[]> {
+        return (input, current) => {
+            let iterations = 0;
+            const expressions: Exs.Expression[] = [];
+            while (iterations < 100) {
+                iterations++;
+                const [c, r] = sequence(spaces(), char("|"), spaces(), fullExpression(), spaces())(input, current);
+                if (r instanceof ParseError) {
+                    // If we find a full path next, we can stop
+                    const [_, _r] = sequence(spaces(), char("|"), spaces(), fullPath())(input, current);
+                    if (_r instanceof ParseError) return [0, r];
+                    return [current, expressions];
+                }
+                current = c;
+                expressions.push(r[3] as Exs.Expression);
+            }
+            return [current, expressions];
+        }
     }
 }
